@@ -16,7 +16,7 @@ impl ServerSpace {
         Self {
             name: String::from(name),
             host: String::from(host),
-            path: String::from(pass),
+            path: String::from(path),
             user: String::from(user),
             pass: String::from(pass),
         }
