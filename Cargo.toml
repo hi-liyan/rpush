@@ -1,0 +1,13 @@
+[package]
+name = "rpush"
+version = "0.0.1"
+edition = "2021"
+description = "push files to server space."
+license = "MIT"
+documentation = "https://docs.rs/rpush"
+homepage = "https://www.surcode.cn/docs/apps/rpush"
+repository = "https://github.com/ennriaaa/rpush/"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
