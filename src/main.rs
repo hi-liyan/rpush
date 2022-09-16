@@ -1,3 +1,7 @@
+use rpush::run;
+
+/// main method
 fn main() {
-    println!("Hello, world!");
+    run();
 }
+
