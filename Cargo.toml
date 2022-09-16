@@ -15,7 +15,7 @@ categories = ["command-line-utilities"]
 [dependencies]
 clap = { version = "3.2.21", features = ["derive"] }
 serde = { version = "1.0.144", features = ["derive"] }
-nu-ansi-term = "0.46.0"
+nu-ansi-term = { version = "0.46.0" }
 
 [dependencies.confy]
 features = ["yaml_conf"]
