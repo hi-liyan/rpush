@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate clap;
+
 use std::io::stdin;
 use std::process;
 

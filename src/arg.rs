@@ -1,11 +1,10 @@
 use clap::{App, Arg, ArgMatches, SubCommand};
 
-/// 命令行解析
 pub fn get_matches() -> ArgMatches {
-    App::new("rpush")
-        .author("liyan")
-        .version("0.0.1")
-        .about("push files to server space by rust.")
+    App::new(crate_name!())
+        .version(crate_version!())
+        .author(crate_authors!())
+        .about(crate_description!())
         .arg_required_else_help(true)
         // 添加服务器空间配置
         .subcommand(SubCommand::with_name("add")
