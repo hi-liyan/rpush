@@ -11,7 +11,7 @@ use std::{
 };
 use std::cmp::Ordering;
 use std::error::Error;
-use std::fs::remove_file;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use clap::ArgMatches;
@@ -180,7 +180,7 @@ fn handle_command_push(arg_matches: &ArgMatches) {
 
 
         // 删除本地压缩文件
-        remove_file(Path::new(&pushed_file_path)).unwrap();
+        fs::remove_file(Path::new(&pushed_file_path)).unwrap();
     } else {
         eprintln!("😔没有这个空间名称！");
     }
