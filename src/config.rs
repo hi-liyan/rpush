@@ -90,7 +90,7 @@ impl Config {
         }
     }
 
-    pub fn remove_server_space(server_space_name: &str) -> bool {
+    pub fn remove_server_space(server_space_name: &str) -> Result<(), &str> {
         let mut cfg = get_config();
         let server_space_list = &mut cfg.server_space_list;
         let server_space_option = server_space_list.get(server_space_name);
@@ -98,9 +98,9 @@ impl Config {
             Some(_) => {
                 server_space_list.remove(server_space_name);
                 save_config(cfg);
-                true
+                Ok(())
             },
-            None => false
+            None => Err("空间不存在")
         }
     }
 }

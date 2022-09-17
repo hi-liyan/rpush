@@ -33,5 +33,10 @@ pub fn get_matches() -> ArgMatches {
                 .help("to be pushed dir"))
             .arg(Arg::with_name("space_name")
                 .required(true)))
+        .subcommand(SubCommand::with_name("rmrf")
+            .about("Delete all dirs and files in the specified server space")
+            .arg(Arg::with_name("space_name")
+                .required(true)
+                .help("server space name")))
         .get_matches()
 }

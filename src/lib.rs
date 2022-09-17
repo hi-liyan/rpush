@@ -8,6 +8,7 @@ use std::{
     fs::File,
     io::stdin
 };
+use std::cmp::Ordering;
 use std::error::Error;
 use std::fs::remove_file;
 use std::path::{Path, PathBuf};
@@ -16,8 +17,9 @@ use clap::ArgMatches;
 use flate2::Compression;
 use flate2::write::GzEncoder;
 use indicatif::ProgressBar;
-use nu_ansi_term::Color::Green;
+use nu_ansi_term::Color::{Green, Red};
 use ssh_rs::{Session, ssh};
+use ssh_rs::error::SshError;
 
 use crate::arg::get_matches;
 use crate::config::{Config, ServerSpace};
@@ -45,6 +47,10 @@ pub fn run() {
     if let Some(arg_matches) = arg_matches.subcommand_matches("push") {
         handle_command_push(arg_matches);
     }
+
+    if let Some(arg_matches) = arg_matches.subcommand_matches("rmrf") {
+        handle_command_rmrf(arg_matches);
+    }
 }
 
 fn handle_command_add() {
@@ -57,35 +63,35 @@ fn handle_command_add() {
     println!("{}", Green.paint("输入空间名称"));
     stdin().read_line(&mut name).expect("read_line error!");
     if util::is_empty(&name) {
-        eprintln!("空间名称不能为空！");
+        eprintln!("😔空间名称不能为空！");
         return;
     }
 
     println!("{}", Green.paint("输入主机地址"));
     stdin().read_line(&mut host).expect("read_line error!");
     if util::is_empty(&host) {
-        eprintln!("主机地址不能为空！");
+        eprintln!("😔主机地址不能为空！");
         return;
     }
 
     println!("{}", Green.paint("输入目标路径"));
     stdin().read_line(&mut path).expect("read_line error!");
     if util::is_empty(&path) {
-        eprintln!("目标路径不能为空！");
+        eprintln!("😔目标路径不能为空！");
         return;
     }
 
     println!("{}", Green.paint("输入主机用户名"));
     stdin().read_line(&mut user).expect("read_line error!");
     if util::is_empty(&user) {
-        eprintln!("主机用户名不能为空！");
+        eprintln!("😔主机用户名不能为空！");
         return;
     }
 
     println!("{}", Green.paint("输入主机密码"));
     stdin().read_line(&mut pass).expect("read_line error!");
     if util::is_empty(&pass) {
-        eprintln!("主机密码不能为空！");
+        eprintln!("😔主机密码不能为空！");
         return;
     }
 
@@ -116,11 +122,9 @@ fn handle_command_detail(arg_matches: &ArgMatches) {
 
 fn handle_command_remove(arg_matches: &ArgMatches) {
     let server_space_name = arg_matches.value_of("space_name").unwrap();
-    let success = Config::remove_server_space(server_space_name);
-    if success {
-        println!("🎉删除成功")
-    } else {
-        eprintln!("😔没有这个空间名称！")
+    match Config::remove_server_space(server_space_name) {
+        Ok(_) => println!("🎉删除成功"),
+        Err(_) => eprintln!("😔没有这个空间名称！")
     }
 }
 
@@ -177,12 +181,19 @@ fn handle_command_push(arg_matches: &ArgMatches) {
     }
 }
 
-fn push_file(server_space: &ServerSpace, pushed_file_name: &str, pushed_file_path: &str) -> Result<(), Box<dyn Error>>  {
-    // 建立目标服务器连接
+/// 建立目标服务器连接
+fn get_ssh_session(server_space: &ServerSpace) -> Result<Session, SshError> {
     let mut session: Session = ssh::create_session();
     session.set_timeout(15);
     session.set_user_and_password(&server_space.user, &server_space.pass);
     session.connect(format!("{}:22", server_space.host))?;
+    Ok(session)
+}
+
+/// 上传文件到空间
+fn push_file(server_space: &ServerSpace, pushed_file_name: &str, pushed_file_path: &str) -> Result<(), Box<dyn Error>>  {
+    // 获取ssh连接
+    let mut session = get_ssh_session(server_space)?;
     // 上传压缩包
     let scp = session.open_scp()?;
     scp.upload(pushed_file_path, &server_space.path)?;
@@ -195,4 +206,25 @@ fn push_file(server_space: &ServerSpace, pushed_file_name: &str, pushed_file_pat
     // 关闭连接
     session.close()?;
     Ok(())
+}
+
+fn handle_command_rmrf(arg_matches: &ArgMatches) {
+    let server_space_name = arg_matches.value_of("space_name").unwrap();
+    if let Some(server_space) = Config::server_space_detail(server_space_name) {
+        println!("{}", Red.paint("确认要删除空间中的所有文件？(yes继续，任意输入退出)"));
+        let mut confirm = String::new();
+        stdin().read_line(&mut confirm).unwrap();
+        if let Ordering::Equal = confirm.to_lowercase().trim().cmp("yes") {
+            let target_path = format!("{}/*", server_space.path);
+            // 获取ssh连接
+            let mut session: Session = get_ssh_session(&server_space).unwrap();
+            session.open_exec()
+                .unwrap()
+                .send_command(&format!("rm -rf {}", target_path))
+                .unwrap();
+            println!("🎉空间文件已全部清除");
+        }
+    } else {
+        eprintln!("😔没有这个空间名称！");
+    }
 }

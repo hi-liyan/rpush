@@ -1,6 +1,6 @@
 [package]
 name = "rpush"
-version = "0.0.4"
+version = "0.0.5"
 edition = "2021"
 authors = ["Liyan 18525589998@163.com"]
 description = "push files to server by rust."
