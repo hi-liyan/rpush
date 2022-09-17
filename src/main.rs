@@ -1,6 +1,6 @@
 use rpush::run;
 
-/// main method
+/// main func
 fn main() {
     run();
 }

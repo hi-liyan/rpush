@@ -1,3 +1,5 @@
+//! command line arguments parse
+
 use clap::{App, Arg, ArgMatches, SubCommand};
 
 pub fn get_matches() -> ArgMatches {
@@ -12,7 +14,7 @@ pub fn get_matches() -> ArgMatches {
         // 列出服务器空间配置
         .subcommand(SubCommand::with_name("list").
             about("list server space config"))
-        // 服务器空间详情
+        // 查看服务器空间详情
         .subcommand(SubCommand::with_name("detail")
             .about("server space config detail")
             .arg(Arg::with_name("space_name")
