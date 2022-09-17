@@ -1,11 +1,10 @@
-//! server configuration
-//! add/list/remove/detail server configuration.
+//! 配置文件存储服务器空间信息
 
-use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
-use std::env;
 use std::fmt::{Display, Formatter};
+
 use nu_ansi_term::Color::Green;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerSpace {
@@ -50,15 +49,16 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn add_server_space(server_space: ServerSpace) {
+    pub fn add_server_space(server_space: ServerSpace) -> Result<(), &'static str> {
         let mut cfg = get_config();
         let server_space_list = &mut cfg.server_space_list;
 
         match server_space_list.get(&server_space.name) {
-            Some(_) => println!("空间已存在！"),
+            Some(_) => Err("空间已存在"),
             None => {
                 server_space_list.insert(server_space.name.clone(), server_space);
                 save_config(cfg);
+                Ok(())
             }
         }
     }
@@ -82,7 +82,7 @@ impl Config {
                     name: server_space.name.clone(),
                     host: server_space.host.clone(),
                     path: server_space.path.clone(),
-                    user: server_space.name.clone(),
+                    user: server_space.user.clone(),
                     pass: server_space.pass.clone()
                 })
             },
@@ -108,7 +108,7 @@ impl Config {
 #[test]
 fn test_add_server_space() {
     let space = ServerSpace::new("aaa", "bbb", "ccc", "ddd", "eee");
-    Config::add_server_space(space);
+    Config::add_server_space(space).unwrap();
 }
 
 #[test]
@@ -124,8 +124,8 @@ fn test_server_space_detail() {
 }
 
 fn get_config_path() -> String {
-    let home_dir = env::home_dir().unwrap();
-    home_dir.to_str().unwrap().to_string() + "/rpush_config"
+    let home_dir = dirs::home_dir().unwrap();
+    home_dir.to_str().unwrap().to_string() + "/.rpush_config"
 }
 
 fn get_config() -> Config {

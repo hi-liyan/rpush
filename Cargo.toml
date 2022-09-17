@@ -1,6 +1,6 @@
 [package]
 name = "rpush"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2021"
 authors = ["Liyan 18525589998@163.com"]
 description = "push files to server by rust."
@@ -21,5 +21,12 @@ serde = { version = "1.0.144", features = ["derive"] }
 nu-ansi-term = { version = "0.46.0" }
 # configuration management
 confy = { version = "0.5.0", features = ["yaml_conf"], default-features = false }
-flate2 = "1.0.24"
+# compression and decompression
+flate2 = { version = "1.0.24" }
+tar = { version = "0.4.38" }
+# ssh
+ssh-rs = { version = "0.2.0" }
+# dirs
+dirs = { version = "4.0" }
+
 
