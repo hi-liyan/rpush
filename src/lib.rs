@@ -5,22 +5,26 @@
 extern crate clap;
 
 use std::{
+    cmp::Ordering,
     env,
-    fs::File,
-    io::stdin
+    error::Error,
+    fs::{self, File},
+    io::stdin,
+    path::{Path, PathBuf}
 };
-use std::cmp::Ordering;
-use std::error::Error;
-use std::fs;
-use std::path::{Path, PathBuf};
 
 use clap::ArgMatches;
-use flate2::Compression;
-use flate2::write::GzEncoder;
+use flate2::{
+    Compression,
+    write::GzEncoder
+};
 use indicatif::ProgressBar;
 use nu_ansi_term::Color::{Green, Red};
-use ssh_rs::{Session, ssh};
-use ssh_rs::error::SshError;
+use ssh_rs::{
+    Session,
+    ssh,
+    error::SshError
+};
 
 use crate::arg::get_matches;
 use crate::config::{Config, ServerSpace};
