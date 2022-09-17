@@ -1,4 +1,5 @@
-//! command line arguments parse
+//! # command line arguments parse
+//! 使用 clap crate 做命令解析处理
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 

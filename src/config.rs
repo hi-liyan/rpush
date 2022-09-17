@@ -1,10 +1,15 @@
-//! 配置文件存储服务器空间信息
+//! # 配置文件处理
+//! 配置文件用来保存添加的服务器配置信息。
+//! 文件默认保存在当前用户目录下，文件名：`.rpush_config`
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
 use nu_ansi_term::Color::Green;
 use serde::{Deserialize, Serialize};
+
+// 配置文件名
+const CONFIG_FILE_NAME: &str = ".rpush_config";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerSpace {
@@ -125,7 +130,7 @@ fn test_server_space_detail() {
 
 fn get_config_path() -> String {
     let home_dir = dirs::home_dir().unwrap();
-    home_dir.to_str().unwrap().to_string() + "/.rpush_config"
+    format!("{}/{}", home_dir.to_str().unwrap(), CONFIG_FILE_NAME)
 }
 
 fn get_config() -> Config {

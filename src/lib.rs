@@ -1,4 +1,5 @@
-//! 主要的处理流程
+//! # 主要处理流程
+//! 从 `run()` 函数开始
 
 #[macro_use]
 extern crate clap;
@@ -105,6 +106,10 @@ fn handle_command_add() {
 
 fn handle_command_list() {
     let server_space_list = Config::list_server_space();
+    if server_space_list.is_empty() {
+        println!("😌还没有添加服务器空间");
+        return;
+    }
     println!("空间列表：");
     for name in server_space_list {
         println!("{}", Green.paint(name));
@@ -181,7 +186,7 @@ fn handle_command_push(arg_matches: &ArgMatches) {
     }
 }
 
-/// 建立目标服务器连接
+/// 建立服务器连接
 fn get_ssh_session(server_space: &ServerSpace) -> Result<Session, SshError> {
     let mut session: Session = ssh::create_session();
     session.set_timeout(15);
