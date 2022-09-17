@@ -4,4 +4,3 @@ use rpush::run;
 fn main() {
     run();
 }
-

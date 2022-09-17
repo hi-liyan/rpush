@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use clap::ArgMatches;
 use flate2::Compression;
 use flate2::write::GzEncoder;
+use indicatif::ProgressBar;
 use nu_ansi_term::Color::Green;
 use ssh_rs::{Session, ssh};
 
@@ -140,6 +141,10 @@ fn handle_command_push(arg_matches: &ArgMatches) {
 
     let server_space_option = Config::server_space_detail(&server_space_name);
     if let Some(server_space) = server_space_option {
+        // 进度条
+        let pb = ProgressBar::new(100);
+        pb.set_position(20);
+
         // 要推送的压缩文件名称和路径
         let pushed_file_name = format!("{}.tar.gz", pushed_dir);
         let pushed_file_path = format!("{}.tar.gz", pushed_dir_abs.to_str().unwrap());
@@ -148,20 +153,23 @@ fn handle_command_push(arg_matches: &ArgMatches) {
         let pushed_file_name_copy = pushed_file_name.clone();
         let pushed_dir_copy = pushed_dir.clone();
         let child = std::thread::spawn(move || {
-
             let tar_gz = File::create(pushed_file_name_copy).unwrap();
             let enc = GzEncoder::new(tar_gz, Compression::best());
             let mut tar = tar::Builder::new(enc);
             tar.append_dir_all("", pushed_dir_copy).unwrap();
         });
         child.join().unwrap();
+        pb.set_position(50);
 
         // 上传压缩文件到服务器
         if let Err(_) = push_file(&server_space, &pushed_file_name, &pushed_file_path) {
             eprintln!("😔上传时发生错误，可能是空间配置信息不正确！");
         } else {
+            pb.finish();
             println!("🎉上传成功");
         }
+
+
         // 删除本地压缩文件
         remove_file(Path::new(&pushed_file_path)).unwrap();
     } else {
@@ -188,4 +196,3 @@ fn push_file(server_space: &ServerSpace, pushed_file_name: &str, pushed_file_pat
     session.close()?;
     Ok(())
 }
-

@@ -28,5 +28,7 @@ tar = { version = "0.4.38" }
 ssh-rs = { version = "0.2.0" }
 # dirs
 dirs = { version = "4.0" }
+# progress
+indicatif = { version = "0.17.1" }
 
 
