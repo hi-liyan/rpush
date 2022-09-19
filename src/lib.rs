@@ -71,6 +71,10 @@ fn handle_command_add() {
         eprintln!("😔空间名称不能为空！");
         return;
     }
+    if !Config::check_server_space_name(&name) {
+        eprintln!("😄空间名称已存在！");
+        return;
+    }
 
     println!("{}", Green.paint("输入主机地址"));
     stdin().read_line(&mut host).expect("read_line error!");

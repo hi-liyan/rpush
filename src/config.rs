@@ -108,6 +108,15 @@ impl Config {
             None => Err("空间不存在")
         }
     }
+
+    pub fn check_server_space_name(server_space_name: &str) -> bool {
+        let cfg = get_config();
+        let server_space_list = cfg.server_space_list;
+        match server_space_list.get(server_space_name) {
+            Some(_) => true,
+            None => false
+        }
+    }
 }
 
 #[test]
