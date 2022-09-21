@@ -237,7 +237,7 @@ fn handle_command_rmrf(arg_matches: &ArgMatches) {
                 .unwrap()
                 .send_command(&format!("rm -rf {}", target_path))
                 .unwrap();
-            println!("🎉空间文件已全部清除");
+            println!("🎉空间中的文件已全部清除");
         }
     } else {
         eprintln!("😔没有这个空间名称！");
