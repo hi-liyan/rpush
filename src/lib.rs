@@ -10,21 +10,21 @@ use std::{
     error::Error,
     fs::{self, File},
     io::stdin,
-    path::{Path, PathBuf}
+    path::{Path, PathBuf},
+    sync::Arc,
 };
-use std::sync::Arc;
 
 use clap::ArgMatches;
 use flate2::{
     Compression,
-    write::GzEncoder
+    write::GzEncoder,
 };
 use indicatif::ProgressBar;
 use nu_ansi_term::Color::{Green, Red};
 use ssh_rs::{
     Session,
     ssh,
-    error::SshError
+    error::SshError,
 };
 
 use crate::arg::get_matches;
@@ -206,7 +206,7 @@ fn get_ssh_session(server_space: &ServerSpace) -> Result<Session, SshError> {
 }
 
 /// 上传文件到空间
-fn push_file(server_space: &ServerSpace, pushed_file_name: &str, pushed_file_path: &str) -> Result<(), Box<dyn Error>>  {
+fn push_file(server_space: &ServerSpace, pushed_file_name: &str, pushed_file_path: &str) -> Result<(), Box<dyn Error>> {
     // 获取ssh连接
     let mut session = get_ssh_session(server_space)?;
     // 上传压缩包
