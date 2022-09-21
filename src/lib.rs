@@ -12,6 +12,7 @@ use std::{
     io::stdin,
     path::{Path, PathBuf}
 };
+use std::sync::Arc;
 
 use clap::ArgMatches;
 use flate2::{
@@ -142,42 +143,43 @@ fn handle_command_remove(arg_matches: &ArgMatches) {
 }
 
 fn handle_command_push(arg_matches: &ArgMatches) {
+    // 解析命令
     let pushed_dir = arg_matches.value_of("pushed_dir").unwrap();
     let server_space_name = arg_matches.value_of("space_name").unwrap();
-
+    // 要推送的本地目录和要推送到的空间名称
     let pushed_dir = util::del_start_separator(pushed_dir).to_string();
     let server_space_name = server_space_name.to_string();
 
-    let current_dir = PathBuf::from(env::current_dir().unwrap());
-    let pushed_dir_abs = current_dir.join(&pushed_dir);
+    // 要推送本地目录的绝对路径
+    let pushed_dir_abs = PathBuf::from(env::current_dir().unwrap()).join(&pushed_dir);
 
     if !pushed_dir_abs.is_dir() {
         eprintln!("😔无效的目录！");
         return;
     }
 
-    let server_space_option = Config::server_space_detail(&server_space_name);
-    if let Some(server_space) = server_space_option {
+    // 要推送到的服务器空间
+    let server_space = Config::server_space_detail(&server_space_name);
+    if let Some(server_space) = server_space {
         // 进度条
         let pb = ProgressBar::new(100);
         pb.set_position(20);
 
-        // 要推送的压缩文件名称和路径
-        let pushed_file_name = format!("{}.tar.gz", pushed_dir);
+        // 要推送的压缩文件名称和绝对路径
+        let pushed_file_name = Arc::new(format!("{}.tar.gz", pushed_dir));
         let pushed_file_path = format!("{}.tar.gz", pushed_dir_abs.to_str().unwrap());
 
         // 打包压缩
         let pushed_file_name_copy = pushed_file_name.clone();
-        let pushed_dir_copy = pushed_dir.clone();
-        let child = std::thread::spawn(move || {
-            let tar_gz = File::create(pushed_file_name_copy).unwrap();
+        let t = std::thread::spawn(move || {
+            let tar_gz = File::create(pushed_file_name_copy.as_ref()).unwrap();
             let enc = GzEncoder::new(tar_gz, Compression::best());
             let mut tar = tar::Builder::new(enc);
-            tar.append_dir_all("", pushed_dir_copy).unwrap();
+            tar.append_dir_all("", pushed_dir).unwrap();
         });
-        child.join().unwrap();
-        pb.set_position(50);
+        t.join().unwrap();
 
+        pb.set_position(50);
         // 上传压缩文件到服务器
         if let Err(_) = push_file(&server_space, &pushed_file_name, &pushed_file_path) {
             eprintln!("😔上传时发生错误，可能是空间配置信息不正确！");
