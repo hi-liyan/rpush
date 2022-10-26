@@ -3,6 +3,7 @@
 
 #[macro_use]
 extern crate clap;
+extern crate base64;
 
 use std::{
     cmp::Ordering,
@@ -30,10 +31,13 @@ use ssh_rs::{
 use crate::arg::get_matches;
 use crate::config::{Config, ServerSpace};
 use crate::utils as util;
+use crate::aes::{encrypt, decrypt};
+use crate::util::read_console;
 
 mod config;
 mod arg;
 mod utils;
+mod aes;
 
 /// run func
 pub fn run() {
@@ -53,60 +57,52 @@ pub fn run() {
     if let Some(arg_matches) = arg_matches.subcommand_matches("push") {
         handle_command_push(arg_matches);
     }
-
     if let Some(arg_matches) = arg_matches.subcommand_matches("rmrf") {
         handle_command_rmrf(arg_matches);
     }
 }
 
 fn handle_command_add() {
-    let mut name = String::new();
-    let mut host = String::new();
-    let mut path = String::new();
-    let mut user = String::new();
-    let mut pass = String::new();
-
     println!("{}", Green.paint("输入空间名称"));
-    stdin().read_line(&mut name).expect("read_line error!");
+    let name = read_console();
     if util::is_empty(&name) {
         eprintln!("😔空间名称不能为空！");
         return;
     }
-    if !Config::check_server_space_name(&name) {
+    if !Config::check_server_space_name_available(&name) {
         eprintln!("😄空间名称已存在！");
         return;
     }
 
     println!("{}", Green.paint("输入主机地址"));
-    stdin().read_line(&mut host).expect("read_line error!");
+    let host = read_console();
     if util::is_empty(&host) {
         eprintln!("😔主机地址不能为空！");
         return;
     }
 
     println!("{}", Green.paint("输入目标路径"));
-    stdin().read_line(&mut path).expect("read_line error!");
+    let path = read_console();
     if util::is_empty(&path) {
         eprintln!("😔目标路径不能为空！");
         return;
     }
 
     println!("{}", Green.paint("输入主机用户名"));
-    stdin().read_line(&mut user).expect("read_line error!");
+    let user = read_console();
     if util::is_empty(&user) {
         eprintln!("😔主机用户名不能为空！");
         return;
     }
 
     println!("{}", Green.paint("输入主机密码"));
-    stdin().read_line(&mut pass).expect("read_line error!");
-    if util::is_empty(&pass) {
+    let pass = rpassword::read_password().unwrap();
+    if util::is_empty(&pass.trim()) {
         eprintln!("😔主机密码不能为空！");
         return;
     }
-
-    let server_space = ServerSpace::new(&name.trim(), &host.trim(),
-                                        &path.trim(), &user.trim(), &pass.trim());
+    let pass = encrypt(&pass).unwrap();
+    let server_space = ServerSpace::new(&name, &host, &path, &user, &pass);
     match Config::add_server_space(server_space) {
         Ok(_) => println!("🎉添加成功️"),
         Err(msg) => eprintln!("😔{}", msg)
@@ -181,8 +177,8 @@ fn handle_command_push(arg_matches: &ArgMatches) {
 
         pb.set_position(50);
         // 上传压缩文件到服务器
-        if let Err(_) = push_file(&server_space, &pushed_file_name, &pushed_file_path) {
-            eprintln!("😔上传时发生错误，可能是空间配置信息不正确！");
+        if let Err(err) = push_file(&server_space, &pushed_file_name, &pushed_file_path) {
+            eprintln!("😔上传时发生错误，可能是空间信息配置不正确！{:?}", err);
         } else {
             pb.finish();
             println!("🎉上传成功");
@@ -198,10 +194,13 @@ fn handle_command_push(arg_matches: &ArgMatches) {
 
 /// 建立服务器连接
 fn get_ssh_session(server_space: &ServerSpace) -> Result<Session, SshError> {
+    let pass = decrypt(&server_space.pass).unwrap();
+
     let mut session: Session = ssh::create_session();
     session.set_timeout(15);
-    session.set_user_and_password(&server_space.user, &server_space.pass);
+    session.set_user_and_password(&server_space.user, &pass);
     session.connect(format!("{}:22", server_space.host))?;
+
     Ok(session)
 }
 
