@@ -1,9 +1,7 @@
-//! # Main
-//! 一切的开端
+//! # 程序入口
 
 use rpush::run;
 
-/// main func
 fn main() {
     run();
 }

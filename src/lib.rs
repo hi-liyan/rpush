@@ -1,5 +1,42 @@
-//! # 主要处理流程
-//! 从 `run()` 函数开始
+//! # rpush✨
+//!
+//! ## 介绍
+//!
+//! 一个推送本地文件到服务器空间的小工具。
+//!
+//! 工具可以保存多个服务器空间配置信息（主机地址、目标路径、用户名、密码），配置文件保存在当前用户目录，文件名：`.rpush_config` 。
+//!
+//! ## 用法
+//!
+//! 1. 添加服务器配置
+//! ```bash
+//! rpush add
+//! ```
+//!
+//! 2. 列出已添加的服务器配置
+//! ```bash
+//! rpush list
+//! ```
+//!
+//! 3. 查看服务器配置详情
+//! ```bash
+//! rpush detail <space_name>
+//! ```
+//!
+//! 4. 移除服务器配置
+//! ```bash
+//! rpush remove <space_name>
+//! ```
+//!
+//! 5. 将当前目录下的指定目录推送到指定服务器。这里要注意，<pushed_dir> 指的是当前目录下要推送的目录，推送到空间中的是该目录中的所有内容。
+//! ```bash
+//! rpush push <pushed_dir> <space_name>
+//! ```
+//!
+//! 6. 删除服务器空间中的所有文件（使用的 rm -rf 命令）
+//! ```bash
+//! rpush rmrf <space_name>
+//! ```
 
 #[macro_use]
 extern crate clap;
@@ -15,29 +52,51 @@ use std::{
     sync::Arc,
 };
 
+use std::net::TcpStream;
 use clap::ArgMatches;
+
 use flate2::{
     Compression,
     write::GzEncoder,
 };
 use indicatif::ProgressBar;
 use nu_ansi_term::Color::{Green, Red};
-use ssh_rs::{
-    Session,
-    ssh,
-    error::SshError,
-};
+use ssh_rs::{ssh, error::SshError, LocalSession};
 
 use crate::arg::get_matches;
 use crate::config::{Config, ServerSpace};
 use crate::utils as util;
 use crate::aes::{encrypt, decrypt};
+use crate::msg::{
+    ADD_SUCCESS,
+    HOST_ADDRESS_IS_EMPTY,
+    INPUT_HOST_ADDRESS,
+    INPUT_PASSWORD,
+    INPUT_SPACE_NAME_MSG,
+    INPUT_TARGET_PATH,
+    INPUT_USERNAME,
+    IS_NOT_DIR,
+    PASSWORD_IS_EMPTY,
+    REMOVE_SUCCESS,
+    RMRF_CONFIRM,
+    RMRF_SUCCESS,
+    SPACE_LIST_IS_EMPTY,
+    SPACE_LIST_TITLE,
+    SPACE_NAME_IS_EMPTY,
+    SPACE_NAME_IS_EXISTED,
+    SPACE_NAME_IS_NOT_EXISTED,
+    TARGET_PATH_IS_EMPTY,
+    UPLOAD_ERR,
+    UPLOAD_SUCCESS,
+    USERNAME_IS_EMPTY
+};
 use crate::util::read_console;
 
 mod config;
 mod arg;
 mod utils;
 mod aes;
+mod msg;
 
 /// run func
 pub fn run() {
@@ -63,48 +122,48 @@ pub fn run() {
 }
 
 fn handle_command_add() {
-    println!("{}", Green.paint("输入空间名称"));
+    println!("{}", Green.paint(INPUT_SPACE_NAME_MSG));
     let name = read_console();
     if util::is_empty(&name) {
-        eprintln!("😔空间名称不能为空！");
+        eprintln!("{}", SPACE_NAME_IS_EMPTY);
         return;
     }
     if !Config::check_server_space_name_available(&name) {
-        eprintln!("😄空间名称已存在！");
+        eprintln!("{}", SPACE_NAME_IS_EXISTED);
         return;
     }
 
-    println!("{}", Green.paint("输入主机地址"));
+    println!("{}", Green.paint(INPUT_HOST_ADDRESS));
     let host = read_console();
     if util::is_empty(&host) {
-        eprintln!("😔主机地址不能为空！");
+        eprintln!("{}", HOST_ADDRESS_IS_EMPTY);
         return;
     }
 
-    println!("{}", Green.paint("输入目标路径"));
+    println!("{}", Green.paint(INPUT_TARGET_PATH));
     let path = read_console();
     if util::is_empty(&path) {
-        eprintln!("😔目标路径不能为空！");
+        eprintln!("{}", TARGET_PATH_IS_EMPTY);
         return;
     }
 
-    println!("{}", Green.paint("输入主机用户名"));
+    println!("{}", Green.paint(INPUT_USERNAME));
     let user = read_console();
     if util::is_empty(&user) {
-        eprintln!("😔主机用户名不能为空！");
+        eprintln!("{}", USERNAME_IS_EMPTY);
         return;
     }
 
-    println!("{}", Green.paint("输入主机密码"));
+    println!("{}", Green.paint(INPUT_PASSWORD));
     let pass = rpassword::read_password().unwrap();
     if util::is_empty(&pass.trim()) {
-        eprintln!("😔主机密码不能为空！");
+        eprintln!("{}", PASSWORD_IS_EMPTY);
         return;
     }
     let pass = encrypt(&pass).unwrap();
     let server_space = ServerSpace::new(&name, &host, &path, &user, &pass);
     match Config::add_server_space(server_space) {
-        Ok(_) => println!("🎉添加成功️"),
+        Ok(_) => println!("{}", ADD_SUCCESS),
         Err(msg) => eprintln!("😔{}", msg)
     }
 }
@@ -112,17 +171,18 @@ fn handle_command_add() {
 fn handle_command_list() {
     let server_space_list = Config::list_server_space();
     if server_space_list.is_empty() {
-        println!("😌还没有添加服务器空间");
+        println!("{}", SPACE_LIST_IS_EMPTY);
         return;
     }
-    println!("空间列表：");
+    println!("{}", SPACE_LIST_TITLE);
     for name in server_space_list {
         println!("{}", Green.paint(name));
     }
 }
 
 fn handle_command_detail(arg_matches: &ArgMatches) {
-    let server_space_name = arg_matches.value_of("space_name").unwrap();
+    let server_space_name = arg_matches.get_one::<String>("space_name").unwrap();
+
     let server_space_option = Config::server_space_detail(server_space_name);
     match server_space_option {
         Some(server_space) => println!("{}", server_space),
@@ -131,17 +191,17 @@ fn handle_command_detail(arg_matches: &ArgMatches) {
 }
 
 fn handle_command_remove(arg_matches: &ArgMatches) {
-    let server_space_name = arg_matches.value_of("space_name").unwrap();
+    let server_space_name = arg_matches.get_one::<String>("space_name").unwrap();
     match Config::remove_server_space(server_space_name) {
-        Ok(_) => println!("🎉删除成功"),
-        Err(_) => eprintln!("😔没有这个空间名称！")
+        Ok(_) => println!("{}", REMOVE_SUCCESS),
+        Err(_) => eprintln!("{}", SPACE_NAME_IS_NOT_EXISTED)
     }
 }
 
 fn handle_command_push(arg_matches: &ArgMatches) {
     // 解析命令
-    let pushed_dir = arg_matches.value_of("pushed_dir").unwrap();
-    let server_space_name = arg_matches.value_of("space_name").unwrap();
+    let pushed_dir = arg_matches.get_one::<String>("pushed_dir").unwrap();
+    let server_space_name = arg_matches.get_one::<String>("space_name").unwrap();
     // 要推送的本地目录和要推送到的空间名称
     let pushed_dir = util::del_start_separator(pushed_dir).to_string();
     let server_space_name = server_space_name.to_string();
@@ -150,7 +210,7 @@ fn handle_command_push(arg_matches: &ArgMatches) {
     let pushed_dir_abs = PathBuf::from(env::current_dir().unwrap()).join(&pushed_dir);
 
     if !pushed_dir_abs.is_dir() {
-        eprintln!("😔无效的目录！");
+        eprintln!("{}", IS_NOT_DIR);
         return;
     }
 
@@ -178,28 +238,30 @@ fn handle_command_push(arg_matches: &ArgMatches) {
         pb.set_position(50);
         // 上传压缩文件到服务器
         if let Err(err) = push_file(&server_space, &pushed_file_name, &pushed_file_path) {
-            eprintln!("😔上传时发生错误，可能是空间信息配置不正确！{:?}", err);
+            eprintln!("{} {:?}", UPLOAD_ERR, err);
         } else {
             pb.finish();
-            println!("🎉上传成功");
+            println!("{}", UPLOAD_SUCCESS);
         }
 
 
         // 删除本地压缩文件
         fs::remove_file(Path::new(&pushed_file_path)).unwrap();
     } else {
-        eprintln!("😔没有这个空间名称！");
+        eprintln!("{}", SPACE_NAME_IS_NOT_EXISTED);
     }
 }
 
 /// 建立服务器连接
-fn get_ssh_session(server_space: &ServerSpace) -> Result<Session, SshError> {
+fn get_ssh_session(server_space: &ServerSpace) -> Result<LocalSession<TcpStream>, SshError> {
     let pass = decrypt(&server_space.pass).unwrap();
 
-    let mut session: Session = ssh::create_session();
-    session.set_timeout(15);
-    session.set_user_and_password(&server_space.user, &pass);
-    session.connect(format!("{}:22", server_space.host))?;
+    let session = ssh::create_session()
+        .username(&server_space.user)
+        .password(&pass)
+        .connect(format!("{}:22", server_space.host))
+        .unwrap()
+        .run_local();
 
     Ok(session)
 }
@@ -218,27 +280,31 @@ fn push_file(server_space: &ServerSpace, pushed_file_name: &str, pushed_file_pat
         .send_command(&format!("cd {};tar zxf {};rm -rf {}", server_space.path, pushed_file_name, pushed_file_name))?;
 
     // 关闭连接
-    session.close()?;
+    session.close();
     Ok(())
 }
 
+/// 清空空间中的文件
 fn handle_command_rmrf(arg_matches: &ArgMatches) {
-    let server_space_name = arg_matches.value_of("space_name").unwrap();
+    let server_space_name = arg_matches.get_one::<String>("space_name").unwrap();
     if let Some(server_space) = Config::server_space_detail(server_space_name) {
-        println!("{}", Red.paint("确认要删除空间中的所有文件？(yes继续，任意输入退出)"));
+        println!("{}", Red.paint(RMRF_CONFIRM));
         let mut confirm = String::new();
         stdin().read_line(&mut confirm).unwrap();
         if let Ordering::Equal = confirm.to_lowercase().trim().cmp("yes") {
             let target_path = format!("{}/*", server_space.path);
             // 获取ssh连接
-            let mut session: Session = get_ssh_session(&server_space).unwrap();
+            let mut session = get_ssh_session(&server_space).unwrap();
             session.open_exec()
                 .unwrap()
                 .send_command(&format!("rm -rf {}", target_path))
                 .unwrap();
-            println!("🎉空间中的文件已全部清除");
+            println!("{}", RMRF_SUCCESS);
+
+            // 关闭连接
+            session.close()
         }
     } else {
-        eprintln!("😔没有这个空间名称！");
+        eprintln!("{}", SPACE_NAME_IS_NOT_EXISTED);
     }
 }

@@ -1,3 +1,4 @@
+use base64::{Engine, engine::general_purpose};
 use crypto::{symmetriccipher, buffer, aes, blockmodes};
 use crypto::buffer::{ReadBuffer, WriteBuffer, BufferResult};
 use mac_address::get_mac_address;
@@ -28,7 +29,7 @@ pub fn encrypt(data: &str) -> Result<String, symmetriccipher::SymmetricCipherErr
             BufferResult::BufferOverflow => {}
         }
     }
-    let base64_str = base64::encode(final_result);
+    let base64_str = general_purpose::STANDARD.encode(final_result);
     Ok(base64_str)
 }
 
@@ -36,7 +37,7 @@ pub fn encrypt(data: &str) -> Result<String, symmetriccipher::SymmetricCipherErr
 /// encrypted_data 参数为加密后的 base64 字符串
 pub fn decrypt(encrypted_data: &str) -> Result<String, symmetriccipher::SymmetricCipherError> {
     let key = gen_key();
-    let encrypted_data = base64::decode(encrypted_data).unwrap();
+    let encrypted_data = general_purpose::STANDARD.decode(encrypted_data).unwrap();
 
     let mut decryptor = aes::ecb_decryptor(
         aes::KeySize::KeySize256,

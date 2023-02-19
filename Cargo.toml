@@ -1,6 +1,6 @@
 [package]
 name = "rpush"
-version = "0.0.6"
+version = "0.0.7"
 edition = "2021"
 authors = ["Liyan 18525589998@163.com"]
 description = "push files to server by rust."
@@ -14,7 +14,7 @@ categories = ["command-line-utilities"]
 
 [dependencies]
 # command line arguments parse
-clap = { version = "3.2.21", features = ["derive", "cargo"] }
+clap = { version = "4.1.6", features = ["derive", "cargo"] }
 # serializing and deserializing
 serde = { version = "1.0.144", features = ["derive"] }
 # controlling print colors and formatting
@@ -26,7 +26,7 @@ flate2 = "1.0.24"
 
 tar = "0.4.38"
 # ssh
-ssh-rs = "0.2.0"
+ssh-rs = "0.3.2"
 # dirs
 dirs = "4.0"
 # progress
@@ -36,7 +36,7 @@ mac_address = "1.1.4"
 
 rust-crypto = "0.2.36"
 
-base64 = "0.13.1"
+base64 = "0.21.0"
 
 rpassword = "7.1.0"
 
